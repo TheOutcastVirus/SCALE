@@ -34,3 +34,40 @@ ds = SemanticSegmentationSlidingWindowGeoDataset.from_uris(
     stride=325,
     out_size=325,
 )
+
+from rastervision.core.data import SemanticSegmentationLabels
+
+predictions = learner.predict_dataset(
+    ds,
+    raw_out=True,
+    numpy_out=True,
+    predict_kw=dict(out_shape=(325, 325)),
+    progress_bar=True)
+
+pred_labels = SemanticSegmentationLabels.from_predictions(
+    ds.windows,
+    predictions,
+    smooth=True,
+    extent=ds.scene.extent,
+    num_classes=len(class_config))
+
+scores = pred_labels.get_score_arr(pred_labels.extent)
+from matplotlib import pyplot as plt
+
+scores_building = scores[0]
+scores_background = scores[1]
+
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
+fig.tight_layout(w_pad=-2)
+ax1.imshow(scores_building, cmap='plasma')
+ax1.axis('off')
+ax1.set_title('building')
+ax2.imshow(scores_background, cmap='plasma')
+ax2.axis('off')
+ax2.set_title('background')
+plt.show()
+
+pred_labels.save(
+    uri=f'./spacenet-vegas-buildings-ss/predict/{scene_id}',
+    crs_transformer=ds.scene.raster_source.crs_transformer,
+    class_config=class_config)
